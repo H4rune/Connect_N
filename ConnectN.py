@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import copy
 
 class ConnectN:
-    def __init__(self, size=(6, 7), connect=4):
+    def __init__(self, size=(6, 7), connect=4, step_penalty = -1, *args, **kwargs):
         """
         Initialize the ConnectN environment.
 
@@ -14,6 +14,7 @@ class ConnectN:
         """
         self.height, self.width = size
         self.connect = connect
+        self.step_reward   = step_penalty           
         self.board_state = np.zeros((self.height, self.width), dtype=int)
         self.current_player = 1
 
@@ -161,9 +162,9 @@ class ConnectN:
         elif outcome == 0:
             return 0  # draw
         elif outcome == last_player:
-            return 1
+            return 25
         else:
-            return -1
+            return -10
 
     def get_terminal_flag(self):
         """
@@ -201,43 +202,15 @@ class ConnectN:
             raise ValueError("Column is full.")
         last_player = self.current_player
         terminal = self.get_terminal_flag()
-        reward = self.get_reward(last_player)
         # Switch player if game is not over.
         if not terminal:
+            reward = self.step_reward  
+            terminal = False
             self.current_player = 2 if self.current_player == 1 else 1
+        else:
+            reward = self.get_reward(last_player)
+            terminal = True
         return self.get_state(), reward, terminal
-
-    # def display_board(self, pretty=True, board=None):
-    #     """
-    #     Display the board. If pretty is True, generate an image using matplotlib;
-    #     otherwise, print the board to the terminal.
-
-    #     Args:
-    #         pretty (bool, optional): Whether to display a pretty image. Defaults to True.
-    #         board (list of lists or numpy array, optional): Board state to display.
-    #             If None, uses the current board_state.
-    #     """
-    #     if board is None:
-    #         board = self.board_state
-    #     board = np.array(board)
-    #     if pretty:
-    #         fig, ax = plt.subplots()
-    #         ax.set_xticks(np.arange(self.width))
-    #         ax.set_yticks(np.arange(self.height))
-    #         ax.set_xticklabels([])
-    #         ax.set_yticklabels([])
-    #         ax.grid(True)
-    #         for i in range(self.height):
-    #             for j in range(self.width):
-    #                 if board[i, j] == 1:
-    #                     ax.text(j, i, 'X', ha='center', va='center', color='red', fontsize=20)
-    #                 elif board[i, j] == 2:
-    #                     ax.text(j, i, 'O', ha='center', va='center', color='blue', fontsize=20)
-    #         ax.invert_yaxis()  # so the bottom row appears at the bottom
-    #         plt.title("ConnectN Board")
-    #         plt.show()
-    #     else:
-    #         print(board)
 
     def display_board(self, pretty=True, board=None):
         """
@@ -433,15 +406,15 @@ class TestConnectN(unittest.TestCase):
 
 if __name__ == '__main__':
     # Uncomment the next two lines to run unit tests
-    #unittest.main()
+    unittest.main()
 
-    # Uncomment the lines below to play a manual game.
-    env = ConnectN(size=(6, 7), connect=4)
-    # env.play_game()
-    env.execute_action(3)
-    env.execute_action(4)
-    env.execute_action(3)
-    env.execute_action(4)
-    env.execute_action(3)
-    env.display_board(pretty=True)
+    # # Uncomment the lines below to play a manual game.
+    # env = ConnectN(size=(6, 7), connect=4)
+    # # env.play_game()
+    # env.execute_action(3)
+    # env.execute_action(4)
+    # env.execute_action(3)
+    # env.execute_action(4)
+    # env.execute_action(3)
+    # env.display_board(pretty=True)
     
