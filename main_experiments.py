@@ -462,17 +462,6 @@ def plot_showdown_random_dqn(stats,folder, label):
     plt.close()
     
 
-
-# runners -------------------------------------------------------------------
-# def run_q():
-#     fac=lambda:QAgent(ConnectN(BOARD_SIZE,CONNECT),**Q_PARAMS)
-#     dfs,agents=collect(fac,EPISODES_Q,AGENTS_Q,EPS_MAX,EPS_MIN,DECAY)
-#     save_all(dfs,"QAgent")
-#     os.makedirs(MODELS_DIR,exist_ok=True)
-#     np.save(os.path.join(MODELS_DIR,"replica_Q_best.npy"),agents[0].q_table)
-#     save_experiment_config(MODELS_DIR)
-#     return agents[0]
-
 def run_q(episodes: int,
           n_agents: int,
           eps_max: float,
@@ -498,20 +487,8 @@ def run_q(episodes: int,
 
     np.save(os.path.join(models_dir, "replica_Q_best.npy"),
             agents[0].q_table)
-
-    #save_experiment_config(models_dir)
     return agents[0]
 
-
-# def run_d():
-#     fac=lambda:DQNAgent(ConnectN(BOARD_SIZE,CONNECT),**DQN_PARAMS)
-#     dfs,agents=collect(fac,EPISODES_DQN,AGENTS_DQN,EPS_MAX,EPS_MIN,DECAY)
-#     save_all(dfs,"DQNAgent")
-#     os.makedirs(MODELS_DIR,exist_ok=True)
-#     torch.save(agents[0].policy_net.state_dict(),
-#                os.path.join(MODELS_DIR,"replica_DQN_best.pt"))
-#     save_experiment_config(MODELS_DIR)
-#     return agents[0]
 
 def run_d(episodes: int,
           n_agents: int,
@@ -524,23 +501,65 @@ def run_d(episodes: int,
           results_dir: str,
           models_dir: str,
           label: str,
-          save_interval: int = None) -> DQNAgent:
+          save_interval: int = None,
+          run_mode: str = 'all') -> DQNAgent:
+    
     os.makedirs(results_dir, exist_ok=True)
     os.makedirs(models_dir,  exist_ok=True)
+    if run_mode == 'all':
+        fac = lambda: DQNAgent(ConnectN(board_size, connect), **dqn_params)
+        dfs, agents = collect(fac, episodes, n_agents, eps_max, eps_min, board_size,connect)
 
-    fac = lambda: DQNAgent(ConnectN(board_size, connect), **dqn_params)
-    dfs, agents = collect(fac, episodes, n_agents, eps_max, eps_min, board_size,connect)
+        save_all(dfs,
+                label=f"DQNAgent_{label}",
+                results_dir=results_dir,
+                save_interval=save_interval)
 
-    save_all(dfs,
-             label=f"DQNAgent_{label}",
-             results_dir=results_dir,
-             save_interval=save_interval)
+        torch.save(agents[0].policy_net.state_dict(),
+                os.path.join(models_dir, "replica_DQN_best.pt"))
+        return agents[0]
+    if run_mode == 'save_dqn_mva':
+        dqn_res_dir = os.path.join(results_dir, f"DQNAgent_{label}")
+        print(f'res_dir: {dqn_res_dir}')
+        os.makedirs(dqn_res_dir, exist_ok=True)
+        curves_dir = os.path.join(dqn_res_dir, "curves")
+        print(f'curves_dir: {curves_dir}')
+        os.makedirs(curves_dir, exist_ok=True)
+        return_df = pd.read_csv(os.path.join(dqn_res_dir, "metrics_return.csv"))
+        len_df = pd.read_csv(os.path.join(dqn_res_dir, "metrics_len.csv"))
+        return_df = return_df.iloc[:, 1]
+        expanding_return = return_df.expanding(min_periods=1).mean()
+        return_df = return_df.rolling(window=50).mean().combine_first(expanding_return)
+        m = return_df
+        #save return mva
+        plt.figure()
+        plt.title(f"{label} – return (moving average)")
+        plt.xlabel("Episode")
+        plt.ylabel("G")
+        x = np.arange(len(m))
+        plt.ylim(0,50)
+        plt.plot(x, m)
+        plt.tight_layout()
+        plt.savefig(os.path.join(curves_dir, f"return_mva.png"))
+        plt.close()
+        #save len mva
+        len_df = len_df.iloc[:, 1]
+        expanding_len = len_df.expanding(min_periods=1).mean()
+        len_df = len_df.rolling(window=50).mean().combine_first(expanding_len)
+        m = len_df
+        plt.figure()
+        plt.title(f"{label} – len (moving average)")
+        plt.xlabel("Episode")
+        plt.ylabel("Moves")
+        x = np.arange(len(m))
+        plt.ylim(0,50)
+        plt.plot(x, m)
+        plt.tight_layout()
+        plt.savefig(os.path.join(curves_dir, f"len_mva.png"))
+        plt.close()
 
-    torch.save(agents[0].policy_net.state_dict(),
-               os.path.join(models_dir, "replica_DQN_best.pt"))
 
-    #save_experiment_config(models_dir)
-    return agents[0]
+
 
 def sweep_experiments(gammas: List[float],
                       target_freqs: List[int],
@@ -697,6 +716,21 @@ def sweep_experiments(gammas: List[float],
                             "Random wins": r_wins,
                             "draws": draws}, f, indent=2)
                 plot_showdown_random_dqn((d_wins, r_wins, draws),out,label)
+
+            if mode == "save_dqn_mva":
+                d_agent = run_d( episodes=episodes_d,
+                                n_agents=agents_d,
+                                eps_max=eps_max,
+                                eps_min=eps_min,
+                                decay=decay,
+                                dqn_params=dp,
+                                board_size=board_size,
+                                connect=connect,
+                                results_dir=res_dir,
+                                models_dir=mdl_dir,
+                                label=label,
+                                save_interval=save_interval,
+                                run_mode='save_dqn_mva')
             
 
 
@@ -765,5 +799,5 @@ if __name__=="__main__":
             models_root   = models_dir,
             save_interval = SAVE_INT,
             showdown_games = 1000,
-            mode="full"
+            mode="save_dqn_mva" # "full", "showdown", "save_dqn_mva"
         )
