@@ -43,10 +43,12 @@ class QAgent:
         Returns:
         - int: The chosen action (column index).
         """
+        legal = [c for c in range(self.num_actions) if self.env.board_state[0, c] == 0]
         if random.random() < self.epsilon:
-            return random.randint(0, self.num_actions - 1)
+             return random.choice(legal)
         else:
-            max_q = np.max(self.q_table[state_index])
+            q_legal = self.q_table[state_index, legal] 
+            max_q = np.max(q_legal) #self.q_table[state_index]
             best_actions = [a for a in range(self.num_actions) if self.q_table[state_index, a] == max_q]
             return random.choice(best_actions)
 
@@ -94,15 +96,23 @@ class QAgent:
         
         return episode
 
-    def get_policy(self):
+    def greedy_action(self, state: np.ndarray) -> int:
         """
-        Extract the greedy policy from the current Q-table.
-        For each discrete state index, this function returns the best action according to Q-values.
-        
-        Returns:
-        - policy: A dictionary mapping state indices to their best action.
+        Pick the best legal action for the given board state.
+        Ties are broken uniformly at random.
         """
-        policy = {}
-        for s in range(self.num_states):
-            policy[s] = np.argmax(self.q_table[s])
-        return policy
+        # 1) Compute which columns are legal
+        legal = [c for c in range(self.num_actions) if state[0, c] == 0]
+
+        # 2) Compute the discrete index for this board
+        idx = self._state_to_index(state)
+
+        # 3) Gather Q-values for just those legal actions
+        q_vals = self.q_table[idx, legal]
+
+        # 4) Find the maximum Q among those
+        max_q = np.max(q_vals)
+
+        # 5) Collect all legal actions achieving that max, break ties
+        best = [a for a, q in zip(legal, q_vals) if q == max_q]
+        return random.choice(best)

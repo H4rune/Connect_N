@@ -1,0 +1,33 @@
+{
+   "BOARD_SIZE": [
+      5,
+      5
+   ],
+   "CONNECT": 3,
+   "EPISODES_Q": 30000,
+   "AGENTS_Q": 50,
+   "EPISODES_DQN": 30000,
+   "AGENTS_DQN": 1,
+   "EPS_MAX": 1.0,
+   "EPS_MIN": 0.05,
+   "DECAY": 0.995,
+   "Q_PARAMS": {
+      "epsilon": 1.0,
+      "alpha": 0.1,
+      "gamma": 0.99
+   },
+   "DQN_PARAMS": {
+      "epsilon": 1.0,
+      "epsilon_decay": 0.995,
+      "epsilon_min": 0.05,
+      "lr": 0.001,
+      "gamma": 0.99,
+      "buffer_cap": 50000,
+      "batch_size": 4096,
+      "target_freq": 1
+   },
+   "RESULTS_DIR": "results_5x5\\g0.99_tf1",
+   "MODELS_DIR": "models_5x5\\g0.99_tf1",
+   "GAMMA": 0.99,
+   "TARGET_FREQ": 1
+}

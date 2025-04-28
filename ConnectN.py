@@ -162,9 +162,9 @@ class ConnectN:
         elif outcome == 0:
             return 0  # draw
         elif outcome == last_player:
-            return 25
+            return 50
         else:
-            return -10
+            return -50
 
     def get_terminal_flag(self):
         """
@@ -406,11 +406,11 @@ class TestConnectN(unittest.TestCase):
 
 if __name__ == '__main__':
     # Uncomment the next two lines to run unit tests
-    unittest.main()
+    #unittest.main()
 
-    # # Uncomment the lines below to play a manual game.
-    # env = ConnectN(size=(6, 7), connect=4)
-    # # env.play_game()
+    # Uncomment the lines below to play a manual game.
+    env = ConnectN(size=(3, 3), connect=3)
+    env.play_game()
     # env.execute_action(3)
     # env.execute_action(4)
     # env.execute_action(3)
