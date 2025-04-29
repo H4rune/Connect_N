@@ -1,13 +1,9 @@
 import numpy as np, torch, torch.nn as nn, torch.optim as optim, random
-# from torch.cuda.amp import GradScaler, autocast
 from torch.amp import GradScaler, autocast
 import torch
 import torch.nn as nn
 import numpy as np
 import random
-from collections import deque
-import logging 
-
 import torch._dynamo
 torch._dynamo.config.suppress_errors = True
 
@@ -66,7 +62,7 @@ class ReplayBuffer:
 
 
 class DQN(nn.Module):
-    """Simple CNN → FC approximator for Connect‑N."""
+    """Simple CNN → FC approximator for Connect-N."""
     def __init__(self, input_shape, num_actions,*args, **kwargs):
         super().__init__()
         c, h, w = input_shape
@@ -116,7 +112,7 @@ class DQN(nn.Module):
 
 
 class DQNAgent:
-    """Deep Q‑learning agent with target network & replay memory."""
+    """Deep Q-learning agent with target network & replay memory."""
     def __init__(self, 
                  env,
                  epsilon=1.0, 
@@ -143,7 +139,6 @@ class DQNAgent:
                                else torch.device('cuda' if torch.cuda.is_available()
                                                  else 'cpu'))
         if self.device.type == "cuda":
-            #torch.cuda.init()                    # ensure early init
             print("DQNAgent using GPU:", torch.cuda.get_device_name(0))
         else:
             print("DQNAgent using CPU")
@@ -160,9 +155,9 @@ class DQNAgent:
 
         self.opt = optim.Adam(self.policy_net.parameters(), lr=lr)
         self.buffer = ReplayBuffer(buffer_cap)
-        self.episodes = 0  # counter for target updates
+        self.episodes = 0 
         self.loss_func = nn.HuberLoss()
-        self.scaler = GradScaler()  # for mixed precision training
+        self.scaler = GradScaler() 
 
 
     def _state_tensor(self, board):
@@ -175,8 +170,8 @@ class DQNAgent:
         channel1 = (b == 1).to(torch.float32)
         channel2 = (b == 2).to(torch.float32)
         channels   = torch.stack([channel1, channel2], dim=0)
-        t        = channels.unsqueeze(0)  # shape (1,2,H,W), dtype float32    torch.from_numpy(channels)
-        return t.to(self.device, non_blocking=True) #.contiguous(memory_format=torch.channels_last)
+        t        = channels.unsqueeze(0) 
+        return t.to(self.device, non_blocking=True) 
 
     def _valid_cols(self):
         return [c for c in range(self.n_actions)
@@ -210,35 +205,24 @@ class DQNAgent:
         if len(self.buffer) < self.batch_size:
             return
         batch = self.buffer.sample(self.batch_size)
-        s, a, r, s2, d = batch #zip(*batch)
-
-        #s   = torch.cat([self._state_tensor(x) for x in s], dim=0)
-        #s2  = torch.cat([self._state_tensor(x) for x in s2], dim=0)
-
-
+        s, a, r, s2, d = batch 
         s  = torch.from_numpy(np.stack([ (s == 1), (s == 2) ], axis=1).astype(np.float32)).to(self.device, non_blocking=True)
         s2 = torch.from_numpy(np.stack([ (s2 == 1), (s2 == 2) ], axis=1).astype(np.float32)).to(self.device, non_blocking=True)
-        
-        # s  = torch.from_numpy(np.stack(s, axis=0)).to(self.device, non_blocking=True)
-        # s2 = torch.from_numpy(np.stack(s2, axis=0)).to(self.device, non_blocking=True)
         a   = torch.tensor(a, device=self.device).unsqueeze(1)
         r   = torch.tensor(r, device=self.device).unsqueeze(1)
         d   = torch.tensor(d, device=self.device).unsqueeze(1).float()
 
-        self.opt.zero_grad(set_to_none=True) #set_to_none=True
+        self.opt.zero_grad(set_to_none=True) 
         with autocast(device_type=self.device.type, dtype=torch.bfloat16):
             q_pred = self.policy_net(s).gather(1, a)
             with torch.no_grad():
                 q_next = self.target_net(s2).max(1, keepdim=True)[0]
                 q_targ = r + self.gamma * q_next * (1 - d)
-            loss = self.loss_func(q_pred, q_targ) #MSELoss()
+            loss = self.loss_func(q_pred, q_targ)
 
         self.scaler.scale(loss).backward()
         self.scaler.unscale_(self.opt)
-        # self.scaler.step(self.opt)
-        # loss.backward()
         nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
-        # self.opt.step()
         self.scaler.step(self.opt)
         self.scaler.update()
 
@@ -259,8 +243,6 @@ class DQNAgent:
                     continue
 
             if training:
-                #state  = self.buffer.board_to_channels(state)
-                #nxt  = self.buffer.board_to_channels(nxt)
                 self.buffer.push(state, act, rew, nxt, done)
                 self._optimize()
 
@@ -275,12 +257,11 @@ class DQNAgent:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.decay)
             self.episodes += 1
             if self.episodes % self.target_freq == 0:
-                # self.target_net.load_state_dict(self.policy_net.state_dict())
                 self._update_target()
         return total
     
 
-    def predict_action(self, state):
+    def predict_action(self, state):  #this function shoudl be used for inference only
         """
         Predict the greedy action for a given board state, masking out full columns.
         """

@@ -21,12 +21,11 @@ class QAgent:
         self.q_table = np.zeros((self.num_states, self.num_actions))
         
 
-    def _state_to_index(self, board):
+    def _state_to_index(self, board): #hash collision is possible for very large boards. May need to be changed to a more robust hash function.
         """
-        Vectorised base‑3 hash of the board.
+        Vectorised base-3 hash of the board.
         """
         flat = board.flatten()
-        # Pre‑compute 3^k vector once and cache it
         if not hasattr(self, "_pow3"):
             self._pow3 = (3 ** np.arange(flat.size, dtype=np.int64)) % self.num_states
         idx = int((flat.astype(np.int64) * self._pow3).sum() % self.num_states)
@@ -96,23 +95,14 @@ class QAgent:
         
         return episode
 
-    def greedy_action(self, state: np.ndarray) -> int:
+    def greedy_action(self, state: np.ndarray) -> int: #should be used during inference
         """
         Pick the best legal action for the given board state.
         Ties are broken uniformly at random.
         """
-        # 1) Compute which columns are legal
         legal = [c for c in range(self.num_actions) if state[0, c] == 0]
-
-        # 2) Compute the discrete index for this board
         idx = self._state_to_index(state)
-
-        # 3) Gather Q-values for just those legal actions
         q_vals = self.q_table[idx, legal]
-
-        # 4) Find the maximum Q among those
         max_q = np.max(q_vals)
-
-        # 5) Collect all legal actions achieving that max, break ties
         best = [a for a, q in zip(legal, q_vals) if q == max_q]
         return random.choice(best)

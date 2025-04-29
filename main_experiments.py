@@ -1,4 +1,3 @@
-
 import os, time, json, random
 from typing import List, Dict, Tuple, Callable
 
@@ -15,7 +14,6 @@ from Agent_DQN  import DQNAgent
 torch.backends.cudnn.benchmark = True
 
 
-# ────────────────── config (edit freely) ──────────────────
 BOARD_SIZE, CONNECT  = (4, 4), 4
 EPISODES_Q,  AGENTS_Q  = 30000 , 50
 EPISODES_DQN, AGENTS_DQN = 30000 , 1
@@ -27,10 +25,10 @@ DQN_PARAMS = {"epsilon": EPS_MAX, "epsilon_decay": DECAY,
               "epsilon_min": EPS_MIN, "lr": 1e-3, "gamma": 0.95,
               "buffer_cap":50000, "batch_size": 4096,
               "target_freq": 1}
-RESULTS, MODELS_DIR = "results_4x4", "models_4x4"  #"results_3DQN_target_freq_1", "models_3DQN_target_freq_1"
+RESULTS, MODELS_DIR = "results_4x4", "models_4x4"  # these two are placeholders
 
 
-# ──────────────────────────────────────────────────────────
+
 def calc_G(rewards, gamma):
     G = 0.
     for r in reversed(rewards): 
@@ -54,28 +52,6 @@ class RandomAgent:
             raise RuntimeError("No legal moves left")
         return random.choice(legal)
 
-# def save_experiment_config(models_dir: str):
-#     """
-#     Save all the key hyperparameters and paths into a JSON file
-#     in models_dir/config.json for reproducibility.
-#     """
-#     config = {
-#         "BOARD_SIZE": BOARD_SIZE,
-#         "CONNECT": CONNECT,
-#         "EPISODES_Q": EPISODES_Q,
-#         "AGENTS_Q": AGENTS_Q,
-#         "EPISODES_DQN": EPISODES_DQN,
-#         "AGENTS_DQN": AGENTS_DQN,
-#         "EPS_MAX": EPS_MAX,
-#         "EPS_MIN": EPS_MIN,
-#         "DECAY": DECAY,
-#         "Q_PARAMS": Q_PARAMS,
-#         "DQN_PARAMS": DQN_PARAMS,
-#         "RESULTS_DIR": RESULTS,
-#         "MODELS_DIR": MODELS_DIR,
-#     }
-#     with open(os.path.join(models_dir, "config.json"), "w") as f:
-#         json.dump(config, f, indent=3)
 
 def save_experiment_config(models_dir: str,
                            results_dir: str,
@@ -123,7 +99,6 @@ def save_experiment_config(models_dir: str,
 
 
 
-# episode runners ------------------------------------------------
 def play_q(agent, env):
     env.reset()
     s_idx = agent._state_to_index(env.get_state())
@@ -136,7 +111,8 @@ def play_q(agent, env):
             continue
         n_idx = agent._state_to_index(s_next)
         agent.update(s_idx, a, r, n_idx)
-        R.append(r); s_idx = n_idx
+        R.append(r)
+        s_idx = n_idx
         steps += 1
     return calc_G(R, agent.gamma), (R[-1] if R else 0), steps
 
@@ -152,8 +128,6 @@ def play_dqn(agent, env):
                 break
             except ValueError: 
                 continue
-        #s = agent.buffer.board_to_channels(s)
-        #s2 = agent.buffer.board_to_channels(s2)
         agent.buffer.push(s,a,r,s2,done)
         agent._optimize()
         R.append(r)
@@ -162,7 +136,6 @@ def play_dqn(agent, env):
     return calc_G(R, agent.gamma), (R[-1] if R else 0), steps
 
 
-# metric collection ---------------------------------------------------------
 def collect(factory:Callable[[],object], 
             episodes:int, 
             n:int,
@@ -195,34 +168,6 @@ def collect(factory:Callable[[],object],
                         columns=[f"agent{j+1}" for j in range(n)]) for k in mats}
     return dfs, agents
 
-
-# save + analyse ------------------------------------------------------------
-# def save_all(dfs:Dict[str,pd.DataFrame], label:str):
-#     d= os.path.join(RESULTS,label)
-#     os.makedirs(d,exist_ok=True)
-#     for k,df in dfs.items():
-#         df.to_csv(os.path.join(d,f"metrics_{k}.csv"))
-#     # last-50 stats for 'return'
-#     ret=dfs["return"].tail(50)
-#     mean=ret.mean(axis=0).mean()
-#     sem=ret.sem(axis=0).mean()
-#     with open(os.path.join(d,"last50_summary.txt"),"w") as f:
-#         f.write(json.dumps({"mean_return":float(mean),"mean_sem":float(sem)},indent=2))
-#     # curves
-#     y_labels_dict = {"return":"G","win":"Win","draw":"Draw","len":"Moves"}
-#     curves=os.path.join(d,"curves")
-#     os.makedirs(curves,exist_ok=True)
-#     for k,df in dfs.items():
-#         m, s = df.mean(axis=1), df.sem(axis=1)
-#         plt.figure()
-#         plt.title(f"{label} – {k}")
-#         plt.xlabel("Episode")
-#         plt.ylabel(y_labels_dict[k])
-#         x = np.arange(len(m))
-#         plt.scatter(x,m,s=5)
-#         plt.fill_between(x, m-s, m+s, alpha=.3)
-#         plt.tight_layout()
-#         plt.savefig(os.path.join(curves,f"{k}.png")); plt.close()
 
 def save_all(dfs: Dict[str, pd.DataFrame],
              label: str,
@@ -284,7 +229,6 @@ def save_all(dfs: Dict[str, pd.DataFrame],
 
 
 
-# cross-play showdown -------------------------------------------------------
 def showdown(best_q: QAgent|None, best_d: DQNAgent|None, random_a: RandomAgent|None, games: int = 1000, board_size: Tuple[int,int] = (4, 4), connect: int = 4) -> Tuple[int,int,int]:
     """
     Plays `games` matches between best_q and best_d.
@@ -311,19 +255,11 @@ def showdown(best_q: QAgent|None, best_d: DQNAgent|None, random_a: RandomAgent|N
             while True:
                 # pick an action
                 if current == "Q":
-                    # QAgent uses its epsilon‐greedy policy with epsilon=0
-                    #idx = best_q._state_to_index(state)
                     a   = best_q.greedy_action(state)
                 else:
                     # DQNAgent picks the greedy network action
                     a   = best_d.predict_action(state)
-                # execute it
-                #try:
                 state, _, done = env.execute_action(a)
-                # except ValueError:
-                #     # fallback if something slips through
-                #     legal = [c for c in range(env.width) if env.board_state[0, c] == 0]
-                #     state, _, done = env.execute_action(random.choice(legal))
                 if done:
                     outcome = env.is_game_over()
                     if outcome == 1:
@@ -356,8 +292,6 @@ def showdown(best_q: QAgent|None, best_d: DQNAgent|None, random_a: RandomAgent|N
             while True:
                 # pick an action
                 if current == "Q":
-                    # QAgent uses its epsilon‐greedy policy with epsilon=0
-                    #idx = best_q._state_to_index(state)
                     a   = best_q.greedy_action(state)
                     q_state = state.copy()
                 else:
@@ -366,9 +300,6 @@ def showdown(best_q: QAgent|None, best_d: DQNAgent|None, random_a: RandomAgent|N
                 # execute it
                 try: state, _, done = env.execute_action(a)
                 except: raise ValueError(f"current: {current}, action: {a}, q state: {q_state}, state: {state}")
-                #     # fallback if something slips through
-                #     legal = [c for c in range(env.width) if env.board_state[0, c] == 0]
-                #     state, _, done = env.execute_action(random.choice(legal))
                 if done:
                     outcome = env.is_game_over()
                     if outcome == 1:
@@ -533,7 +464,7 @@ def run_d(episodes: int,
         m = return_df
         #save return mva
         plt.figure()
-        plt.title(f"{label} – return (moving average)")
+        plt.title(f"{label} - return (moving average)")
         plt.xlabel("Episode")
         plt.ylabel("G")
         x = np.arange(len(m))
@@ -548,7 +479,7 @@ def run_d(episodes: int,
         len_df = len_df.rolling(window=50).mean().combine_first(expanding_len)
         m = len_df
         plt.figure()
-        plt.title(f"{label} – len (moving average)")
+        plt.title(f"{label} - len (moving average)")
         plt.xlabel("Episode")
         plt.ylabel("Moves")
         x = np.arange(len(m))
@@ -777,8 +708,6 @@ if __name__=="__main__":
     SAVE_INT     = 10000
 
     for (board_size, connect) in zip(BOARD_SIZES, CONNECTS):
-        # if board_size == (4, 4):
-        #     TARGET_FREQS = TARGET_FREQS[1:]
         results_dir, models_dir = f"results_{board_size[0]}x{board_size[1]}", f"models_{board_size[0]}x{board_size[1]}"
         print(f"\n=== Experiment {board_size[0]}x{board_size[1]} ===")
         sweep_experiments(
@@ -799,5 +728,5 @@ if __name__=="__main__":
             models_root   = models_dir,
             save_interval = SAVE_INT,
             showdown_games = 1000,
-            mode="save_dqn_mva" # "full", "showdown", "save_dqn_mva"
+            mode="full" # "full", "showdown", "save_dqn_mva"
         )

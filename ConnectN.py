@@ -1,7 +1,5 @@
 import numpy as np
-import math
 import matplotlib.pyplot as plt
-import copy
 
 class ConnectN:
     def __init__(self, size=(6, 7), connect=4, step_penalty = -1, *args, **kwargs):
@@ -162,9 +160,9 @@ class ConnectN:
         elif outcome == 0:
             return 0  # draw
         elif outcome == last_player:
-            return 50
+            return 50  # this can be adjusted to be higher or lower
         else:
-            return -50
+            return -50 # same here
 
     def get_terminal_flag(self):
         """
@@ -226,7 +224,7 @@ class ConnectN:
             board = self.board_state
         board = np.array(board)
         if pretty:
-            fig, ax = plt.subplots()
+            _, ax = plt.subplots()
             # Set ticks to create a grid that outlines each cell.
             ax.set_xticks(np.arange(self.width + 1))
             ax.set_yticks(np.arange(self.height + 1))
@@ -260,7 +258,7 @@ class ConnectN:
                 print("Please enter a valid integer.")
                 continue
             try:
-                state, reward, terminal = self.execute_action(action)
+                _, _, terminal = self.execute_action(action)
             except ValueError as e:
                 print(e)
                 continue
@@ -273,9 +271,7 @@ class ConnectN:
                     print(f"Player {outcome} wins!")
                 break
 
-# -------------------------
-# Unit Tests for ConnectN
-# -------------------------
+
 import unittest
 import io
 import sys
@@ -411,10 +407,5 @@ if __name__ == '__main__':
     # Uncomment the lines below to play a manual game.
     env = ConnectN(size=(3, 3), connect=3)
     env.play_game()
-    # env.execute_action(3)
-    # env.execute_action(4)
-    # env.execute_action(3)
-    # env.execute_action(4)
-    # env.execute_action(3)
-    # env.display_board(pretty=True)
+
     
